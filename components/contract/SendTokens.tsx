@@ -1,6 +1,5 @@
-import { Button, Input, useToasts } from '@geist-ui/core';
+import { useToasts } from '@geist-ui/core';
 import { erc20ABI, useSigner } from 'wagmi';
-import { TransactionResponse, isAddress } from 'essential-eth';
 import { ethers } from 'ethers';
 import { useAtom } from 'jotai';
 import { checkedTokensAtom } from '../../src/atoms/checked-tokens-atom';
@@ -49,7 +48,7 @@ export const SendTokens = () => {
       );
 
       const amountToTransfer = ethers.utils.parseUnits(
-        token?.balance || '0',
+        token?.balance ?? '0',
         18,
       );
 

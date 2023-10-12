@@ -34,7 +34,7 @@ const { chains, provider } = configureChains(
   [mainnet, polygon, optimism, arbitrum, avalanche, bsc, gnosis, polygonMumbai],
   [alchemyProvider({ apiKey: alchemyId }), publicProvider()],
 );
-const projectId = 'f33fcd27c9ce58e7176e36666876b4d1';
+const projectId = process.env.NEXT_PUBLIC_PROJECT_ID as string;
 const { connectors } = getDefaultWallets({
   appName: 'Drain',
   projectId,
