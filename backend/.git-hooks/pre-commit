@@ -1,0 +1,9 @@
+#!/bin/bash
+# Auto-versioning pre-commit hook
+# Automatically bumps version based on commit content
+
+echo "🔄 Running auto-versioning..."
+node scripts/auto-version.js
+
+# Exit with the status of auto-version script
+exit $?
