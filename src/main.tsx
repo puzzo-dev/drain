@@ -16,7 +16,7 @@ import {
 import { CssBaseline, GeistProvider, Loading } from '@geist-ui/core';
 import App from './App';
 import './index.css';
-import { getConfig, PublicConfig } from './lib/config';
+import { getConfig } from './lib/config';
 
 const chains = [
   mainnet,
@@ -33,15 +33,12 @@ let web3ModalInitialized = false;
 
 // Root component with config loading
 const Root = () => {
-  const [appConfig, setAppConfig] = useState<PublicConfig | null>(null);
   const [wagmiConfig, setWagmiConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getConfig()
       .then((config) => {
-        setAppConfig(config);
-
         // Create wagmi config with project ID from database
         const projectId = config.walletconnect.projectId;
 
@@ -108,6 +105,8 @@ const Root = () => {
     </React.StrictMode>
   );
 };
+
+export default Root;
 
 // `useWeb3Modal` is re-exported from `src/lib/web3modal` to avoid importing
 // this file (which mounts the app) from other modules and causing side-effects.

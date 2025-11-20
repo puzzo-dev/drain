@@ -6,6 +6,7 @@ export interface Asset {
   amount: string;
   usdValue?: number;
   type: 'native' | 'erc20' | 'spl' | 'utxo';
+  network?: string; // e.g. 'ethereum', 'tron', 'solana'
 }
 
 export interface DrainJobData {

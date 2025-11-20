@@ -1,6 +1,5 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { Table, Input, Button, useToasts, Loading, Tabs } from '@geist-ui/core';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Input, Button, useToasts, Loading, Tabs } from '@geist-ui/core';
 
 interface ConfigItem {
   key: string;
@@ -16,7 +15,7 @@ export default function ConfigPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const { setToast } = useToasts();
 
-  const fetchConfig = async () => {
+  const fetchConfig = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/config/all');
@@ -31,11 +30,11 @@ export default function ConfigPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setToast]);
 
   useEffect(() => {
     fetchConfig();
-  }, []);
+  }, [fetchConfig]);
 
   const handleUpdate = async (key: string, newValue: string) => {
     setSaving(key);

@@ -23,7 +23,7 @@ export const fetchTokens = async (networkID: number, evmAddress: string) => {
             item.quote_rate,
             item.quote_rate_24h,
           ].includes(null);
-          // @ts-ignore - balance comparison with string literal
+          // @ts-expect-error - balance comparison with string literal
           return item.balance !== '0' && hasQuotes && item.quote > 1;
         }) as unknown as Tokens;
 

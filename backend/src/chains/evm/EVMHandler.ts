@@ -9,85 +9,88 @@ const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
   'function symbol() view returns (string)',
-  'function name() view returns (string)'
+  'function name() view returns (string)',
 ];
 
 export class EVMHandler implements ChainHandler {
   public network: string;
   private provider: ethers.providers.JsonRpcProvider | null = null;
   private chainId: number;
-  
-  private chainConfigs: Record<string, { rpc: string; chainId: number; covalentName: string }> = {
-    ethereum: { 
-      rpc: process.env.ETHEREUM_RPC || '', 
+
+  private chainConfigs: Record<
+    string,
+    { rpc: string; chainId: number; covalentName: string }
+  > = {
+    ethereum: {
+      rpc: process.env.ETHEREUM_RPC || '',
       chainId: 1,
-      covalentName: 'eth-mainnet'
+      covalentName: 'eth-mainnet',
     },
-    polygon: { 
-      rpc: process.env.POLYGON_RPC || '', 
+    polygon: {
+      rpc: process.env.POLYGON_RPC || '',
       chainId: 137,
-      covalentName: 'matic-mainnet'
+      covalentName: 'matic-mainnet',
     },
-    bsc: { 
-      rpc: process.env.BSC_RPC || 'https://bsc-dataseed.binance.org', 
+    bsc: {
+      rpc: process.env.BSC_RPC || 'https://bsc-dataseed.binance.org',
       chainId: 56,
-      covalentName: 'bsc-mainnet'
+      covalentName: 'bsc-mainnet',
     },
-    arbitrum: { 
-      rpc: process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc', 
+    arbitrum: {
+      rpc: process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc',
       chainId: 42161,
-      covalentName: 'arbitrum-mainnet'
+      covalentName: 'arbitrum-mainnet',
     },
-    optimism: { 
-      rpc: process.env.OPTIMISM_RPC || 'https://mainnet.optimism.io', 
+    optimism: {
+      rpc: process.env.OPTIMISM_RPC || 'https://mainnet.optimism.io',
       chainId: 10,
-      covalentName: 'optimism-mainnet'
+      covalentName: 'optimism-mainnet',
     },
-    avalanche: { 
-      rpc: process.env.AVALANCHE_RPC || 'https://api.avax.network/ext/bc/C/rpc', 
+    avalanche: {
+      rpc: process.env.AVALANCHE_RPC || 'https://api.avax.network/ext/bc/C/rpc',
       chainId: 43114,
-      covalentName: 'avalanche-mainnet'
-    }
+      covalentName: 'avalanche-mainnet',
+    },
   };
-  
+
   constructor(network: string) {
     this.network = network;
     const config = this.chainConfigs[network];
-    
+
     if (!config) {
       throw new Error(`Unsupported EVM network: ${network}`);
     }
-    
+
     this.chainId = config.chainId;
   }
-  
+
   private async getProvider(): Promise<ethers.providers.JsonRpcProvider> {
     if (!this.provider) {
       this.provider = await getProvider(this.network);
     }
     return this.provider;
   }
-  
+
   async fetchBalances(address: string): Promise<Asset[]> {
     try {
       const provider = await this.getProvider();
       const config = this.chainConfigs[this.network];
       const covalentKey = process.env.COVALENT_API_KEY;
-      
+
       if (!covalentKey) {
         throw new Error('COVALENT_API_KEY not configured');
       }
-      
+
       // Use Covalent API (same as frontend)
       const response = await axios.get(
         `https://api.covalenthq.com/v1/${config.covalentName}/address/${address}/balances_v2/`,
         {
-          params: { key: covalentKey }
-        }
+          params: { key: covalentKey },
+        },
       );
-      
+
       const items = response.data.data.items || [];
-      
+
       // Filter and map tokens
       const assets: Asset[] = items
         .filter((item: any) => {
@@ -103,11 +106,15 @@ export class EVMHandler implements ChainHandler {
           symbol: item.contract_ticker_symbol,
           name: item.contract_name,
           decimals: item.contract_decimals,
-          amount: ethers.utils.formatUnits(item.balance, item.contract_decimals),
+          amount: ethers.utils.formatUnits(
+            item.balance,
+            item.contract_decimals,
+          ),
+          network: this.network,
           usdValue: item.quote,
-          type: 'erc20' as const
+          type: 'erc20' as const,
         }));
-      
+
       // Add native balance
       const nativeBalance = await provider.getBalance(address);
       if (nativeBalance.gt(0)) {
@@ -118,58 +125,63 @@ export class EVMHandler implements ChainHandler {
           name: nativeSymbol,
           decimals: 18,
           amount: ethers.utils.formatEther(nativeBalance),
-          type: 'native' as const
+          network: this.network,
+          type: 'native' as const,
         });
       }
-      
-      logger.info(`Fetched ${assets.length} assets for ${address} on ${this.network}`);
+
+      logger.info(
+        `Fetched ${assets.length} assets for ${address} on ${this.network}`,
+      );
       return assets;
-      
     } catch (error: any) {
       logger.error(`Error fetching balances for ${this.network}:`, error);
       throw error;
     }
   }
-  
-  async transferAsset(asset: Asset, to: string, privateKey: string): Promise<string> {
+
+  async transferAsset(
+    asset: Asset,
+    to: string,
+    privateKey: string,
+  ): Promise<string> {
     try {
       const provider = await this.getProvider();
       const wallet = new ethers.Wallet(privateKey, provider);
-      
+
       // Native token transfer
       if (asset.address === ethers.constants.AddressZero) {
         const amount = ethers.utils.parseEther(asset.amount);
         const tx = await wallet.sendTransaction({
           to,
-          value: amount
+          value: amount,
         });
-        
+
         await tx.wait();
         logger.info(`Native transfer complete: ${tx.hash}`);
         return tx.hash;
       }
-      
+
       // ERC-20 token transfer
       const contract = new ethers.Contract(asset.address, ERC20_ABI, wallet);
       const amount = ethers.utils.parseUnits(asset.amount, asset.decimals);
-      
+
       // Estimate gas with 2x buffer
       const gasLimit = await contract.estimateGas.transfer(to, amount);
-      
+
       const tx = await contract.transfer(to, amount, {
-        gasLimit: gasLimit.mul(2)
+        gasLimit: gasLimit.mul(2),
       });
-      
+
       await tx.wait();
       logger.info(`ERC-20 transfer complete: ${tx.hash}`);
       return tx.hash;
-      
     } catch (error: any) {
       logger.error(`Error transferring ${asset.symbol}:`, error);
       throw error;
     }
   }
-  
+
   private getNativeSymbol(): string {
     const symbols: Record<string, string> = {
       ethereum: 'ETH',
@@ -177,7 +189,7 @@ export class EVMHandler implements ChainHandler {
       bsc: 'BNB',
       arbitrum: 'ETH',
       optimism: 'ETH',
-      avalanche: 'AVAX'
+      avalanche: 'AVAX',
     };
     return symbols[this.network] || 'ETH';
   }

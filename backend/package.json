@@ -5,15 +5,13 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "concurrently \"redis-server --daemonize yes\" \"nodemon --watch src --exec ts-node src/index.ts\"",
-    "dev:worker": "nodemon --watch src --exec ts-node src/worker.ts",
     "dev:withdrawal": "nodemon --watch src --exec ts-node src/withdrawal-worker.ts",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:worker\" \"npm run dev:withdrawal\"",
+    "dev:all": "npm run dev",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:studio": "npx prisma studio",
     "build": "tsc",
     "start": "node dist/index.js",
-    "start:worker": "node dist/worker.js",
     "start:withdrawal": "node dist/withdrawal-worker.js",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
@@ -42,6 +40,7 @@
     "pg": "^8.16.3",
     "prisma": "^7.0.0",
     "socket.io": "^4.6.0",
+    "tronweb": "^6.1.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {

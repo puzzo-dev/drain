@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import './worker'; // Start worker when backend starts
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { drainQueue } from './queues';
