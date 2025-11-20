@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { drainQueue } from '../queue';
+import { drainQueue } from '../queues';
 
 const router = Router();
 

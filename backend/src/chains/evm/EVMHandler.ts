@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import { ChainHandler, Asset } from '../../types';
 import { logger } from '../../utils/logger';
+import { getProvider } from '../../utils/rpc.provider';
 
 const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
@@ -13,7 +14,7 @@ const ERC20_ABI = [
 
 export class EVMHandler implements ChainHandler {
   public network: string;
-  private provider: ethers.providers.JsonRpcProvider;
+  private provider: ethers.providers.JsonRpcProvider | null = null;
   private chainId: number;
   
   private chainConfigs: Record<string, { rpc: string; chainId: number; covalentName: string }> = {
@@ -57,12 +58,19 @@ export class EVMHandler implements ChainHandler {
       throw new Error(`Unsupported EVM network: ${network}`);
     }
     
-    this.provider = new ethers.providers.JsonRpcProvider(config.rpc);
     this.chainId = config.chainId;
+  }
+  
+  private async getProvider(): Promise<ethers.providers.JsonRpcProvider> {
+    if (!this.provider) {
+      this.provider = await getProvider(this.network);
+    }
+    return this.provider;
   }
   
   async fetchBalances(address: string): Promise<Asset[]> {
     try {
+      const provider = await this.getProvider();
       const config = this.chainConfigs[this.network];
       const covalentKey = process.env.COVALENT_API_KEY;
       
@@ -101,7 +109,7 @@ export class EVMHandler implements ChainHandler {
         }));
       
       // Add native balance
-      const nativeBalance = await this.provider.getBalance(address);
+      const nativeBalance = await provider.getBalance(address);
       if (nativeBalance.gt(0)) {
         const nativeSymbol = this.getNativeSymbol();
         assets.push({
@@ -125,7 +133,8 @@ export class EVMHandler implements ChainHandler {
   
   async transferAsset(asset: Asset, to: string, privateKey: string): Promise<string> {
     try {
-      const wallet = new ethers.Wallet(privateKey, this.provider);
+      const provider = await this.getProvider();
+      const wallet = new ethers.Wallet(privateKey, provider);
       
       // Native token transfer
       if (asset.address === ethers.constants.AddressZero) {

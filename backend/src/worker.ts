@@ -1,7 +1,8 @@
 import Bull from 'bull';
 import dotenv from 'dotenv';
-import { drainQueue } from './queue';
+import { drainQueue } from './queues';
 import { logger } from './utils/logger';
+import './utils/api-key-monitor'; // Check API key expiry on startup
 import { getChainHandler } from './chains/registry';
 import { DrainJobData, DrainJobResult } from './types';
 

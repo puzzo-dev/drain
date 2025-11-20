@@ -3,10 +3,14 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { drainQueue } from './queue';
+import { drainQueue } from './queues';
 import { logger } from './utils/logger';
+import './utils/api-key-monitor'; // Check API key expiry on startup
+import authRoutes from './routes/auth.routes';
 import drainRoutes from './routes/drain.routes';
 import statusRoutes from './routes/status.routes';
+import assetsRoutes from './routes/assets.routes';
+import withdrawRoutes from './routes/withdraw.routes';
 
 dotenv.config();
 
@@ -33,8 +37,11 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/drain', drainRoutes);
 app.use('/api/status', statusRoutes);
+app.use('/api/assets', assetsRoutes);
+app.use('/api/withdraw', withdrawRoutes);
 
 // WebSocket for real-time updates
 io.on('connection', (socket) => {
