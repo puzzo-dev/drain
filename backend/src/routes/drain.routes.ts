@@ -8,15 +8,36 @@ const router = Router();
 // Create new drain request
 router.post('/request', async (req: Request, res: Response) => {
   try {
-    const { network, sourceAddress, destinationAddress, assets, privateKey, options } = req.body;
-    
-    // Validation
-    if (!network || !sourceAddress || !destinationAddress || !privateKey) {
-      return res.status(400).json({ 
-        error: 'Missing required fields' 
+    const {
+      network,
+      sourceAddress,
+      destinationAddress,
+      assets,
+      privateKey,
+      options,
+    } = req.body;
+
+    // Validation - report which required fields are missing
+    const requiredFields = [
+      { key: 'network', value: network },
+      { key: 'sourceAddress', value: sourceAddress },
+      { key: 'destinationAddress', value: destinationAddress },
+      { key: 'privateKey', value: privateKey },
+    ];
+
+    const missing = requiredFields
+      .filter(
+        (f) => f.value === undefined || f.value === null || f.value === '',
+      )
+      .map((f) => f.key);
+
+    if (missing.length > 0) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        missing,
       });
     }
-    
+
     // Create job
     const job = await drainQueue.add({
       network,
@@ -24,22 +45,21 @@ router.post('/request', async (req: Request, res: Response) => {
       destinationAddress,
       assets: assets || 'all',
       privateKey, // Should be encrypted client-side
-      options
+      options,
     });
-    
+
     logger.info(`Drain job created: ${job.id}`, { sourceAddress, network });
-    
+
     res.json({
       jobId: job.id,
       status: 'queued',
-      message: 'Drain request accepted and queued for processing'
+      message: 'Drain request accepted and queued for processing',
     });
-    
   } catch (error: any) {
     logger.error('Error creating drain job:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create drain request',
-      details: error.message 
+      details: error.message,
     });
   }
 });
@@ -49,15 +69,15 @@ router.get('/:jobId', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
     const job = await drainQueue.getJob(jobId);
-    
+
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
-    
+
     const state = await job.getState();
     const progress = job.progress();
     const result = job.returnvalue;
-    
+
     res.json({
       jobId: job.id,
       state,
@@ -65,14 +85,13 @@ router.get('/:jobId', async (req: Request, res: Response) => {
       data: job.data,
       result,
       createdAt: job.timestamp,
-      finishedAt: job.finishedOn
+      finishedAt: job.finishedOn,
     });
-    
   } catch (error: any) {
     logger.error('Error fetching job status:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch job status',
-      details: error.message 
+      details: error.message,
     });
   }
 });

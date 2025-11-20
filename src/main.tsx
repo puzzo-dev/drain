@@ -13,7 +13,7 @@ import {
   avalanche,
   bsc,
   gnosis,
-} from 'wagmi/chains';
+} from '@reown/appkit/networks';
 import { CssBaseline, GeistProvider, Loading } from '@geist-ui/core';
 import App from './App';
 import './index.css';
@@ -44,7 +44,11 @@ const Root = () => {
         const metadata = {
           name: config.app.name,
           description: config.app.description,
-          url: config.app.url,
+          // Use current origin in dev to avoid relayer origin mismatches
+          url:
+            typeof window !== 'undefined'
+              ? window.location.origin
+              : config.app.url,
           icons: [config.app.iconUrl],
         };
 

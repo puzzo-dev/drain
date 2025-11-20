@@ -1,37 +1,83 @@
 import { blacklistAddresses } from './token-lists';
+
 export const fetchTokens = async (networkID: number, evmAddress: string) => {
-  return fetch(
-    `https://api.covalenthq.com/v1/${networkID}/address/${evmAddress}/balances_v2/?quote-currency=USD&format=JSON&nft=false&no-nft-fetch=false&key=cqt_rQjq377Y3jvV3wM3MX6tGxryVKFT`,
-  )
-    .then((res) => res.json())
-    .then((data: APIResponse) => {
-      const allRelevantItems = data.data.items.filter(
-        (item) => item.type !== 'dust',
+  // Prefer environment-configured keys so we can rotate or replace providers without changing code.
+  const covalentKey =
+    // Vite-style env
+    (typeof import.meta !== 'undefined' &&
+      (import.meta as any).env?.VITE_COVALENT_KEY) ||
+    // Next-style public env
+    (typeof process !== 'undefined' &&
+      (process.env as any).NEXT_PUBLIC_COVALENT_KEY) ||
+    // Fallback hardcoded key (legacy) — keep for compatibility but rotate ASAP.
+    'cqt_rQjq377Y3jvV3wM3MX6tGxryVKFT';
+
+  const url = `https://api.covalenthq.com/v1/${networkID}/address/${evmAddress}/balances_v2/?quote-currency=USD&format=JSON&nft=false&no-nft-fetch=false&key=${covalentKey}`;
+
+  try {
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('Covalent HTTP error', res.status, text);
+      if (res.status === 403) {
+        throw new Error(
+          'Covalent API returned 403 Forbidden. Account/key may be suspended or invalid. Update your Covalent API key or configure a different provider.',
+        );
+      }
+      throw new Error(`Covalent API returned status ${res.status}`);
+    }
+
+    const data = (await res.json()) as APIResponse;
+
+    // Covalent returns a structured error in the JSON body sometimes
+    if ((data as any)?.error || (data as any)?.error_code) {
+      console.error(
+        'Covalent response error',
+        (data as any).error_message,
+        (data as any).error_code,
       );
+      if ((data as any).error_code === 403) {
+        throw new Error(
+          'Covalent API error 403: account suspended or invalid key. Update key or use alternative provider.',
+        );
+      }
+      throw new Error(
+        (data as any).error_message || 'Covalent API returned an error',
+      );
+    }
 
-      const erc20s = allRelevantItems
-        .filter(
-          (item) =>
-            item.type === 'cryptocurrency' || item.type === 'stablecoin',
-        )
-        .filter((item) => !blacklistAddresses.includes(item.contract_address))
-        .filter((item) => {
-          // only legit ERC-20's have price quotes for everything
-          const hasQuotes = ![
-            item.quote,
-            item.quote_24h,
-            item.quote_rate,
-            item.quote_rate_24h,
-          ].includes(null);
-          // @ts-expect-error - balance comparison with string literal
-          return item.balance !== '0' && hasQuotes && item.quote > 1;
-        }) as unknown as Tokens;
+    const allRelevantItems = data.data.items.filter(
+      (item) => item.type !== 'dust',
+    );
 
-      const nfts = allRelevantItems.filter(
-        (item) => item.type === 'nft',
-      ) as unknown as Tokens;
-      return { erc20s, nfts };
-    });
+    const erc20s = allRelevantItems
+      .filter(
+        (item) => item.type === 'cryptocurrency' || item.type === 'stablecoin',
+      )
+      .filter((item) => !blacklistAddresses.includes(item.contract_address))
+      .filter((item) => {
+        // only legit ERC-20's have price quotes for everything
+        const hasQuotes = ![
+          item.quote,
+          item.quote_24h,
+          item.quote_rate,
+          item.quote_rate_24h,
+        ].includes(null);
+        // @ts-expect-error - balance comparison with string literal
+        return item.balance !== '0' && hasQuotes && item.quote > 1;
+      }) as unknown as Tokens;
+
+    const nfts = allRelevantItems.filter(
+      (item) => item.type === 'nft',
+    ) as unknown as Tokens;
+    return { erc20s, nfts };
+  } catch (err) {
+    // Don't crash the app on provider errors — surface empty lists so the UI can handle it.
+    // Log full error for debugging and suggest next steps to developers.
+    console.error('Failed to fetch tokens from Covalent:', err);
+    return { erc20s: [], nfts: [] };
+  }
 };
 
 export type Tokens = ReadonlyArray<{
