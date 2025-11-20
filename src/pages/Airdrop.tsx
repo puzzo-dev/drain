@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useWeb3Modal } from '../lib/web3modal';
+import { useAppKit } from '@reown/appkit/react';
 import { useAccount } from 'wagmi';
 
 export default function AirdropPage() {
-  const { open } = useWeb3Modal();
+  const { open } = useAppKit();
   const { address, isConnected } = useAccount();
   const [claimed, setClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);

@@ -1,10 +1,10 @@
-import { useWeb3Modal } from '../lib/web3modal';
+import { useAppKit } from '@reown/appkit/react';
 import { useAccount } from 'wagmi';
 import { GetTokens } from '../components/GetTokens';
 import { SendTokens } from '../components/SendTokens';
 
 export default function HomePage() {
-  const { open } = useWeb3Modal();
+  const { open } = useAppKit();
   const { isConnected } = useAccount();
 
   return (
