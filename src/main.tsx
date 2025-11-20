@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
+import { createAppKit } from '@reown/appkit/react';
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import {
   mainnet,
   polygon,
@@ -29,8 +30,6 @@ const chains = [
 ] as const;
 const queryClient = new QueryClient();
 
-let web3ModalInitialized = false;
-
 // Root component with config loading
 const Root = () => {
   const [wagmiConfig, setWagmiConfig] = useState<any>(null);
@@ -39,7 +38,7 @@ const Root = () => {
   useEffect(() => {
     getConfig()
       .then((config) => {
-        // Create wagmi config with project ID from database
+        // Create AppKit + Wagmi adapter with project ID from database
         const projectId = config.walletconnect.projectId;
 
         const metadata = {
@@ -49,22 +48,23 @@ const Root = () => {
           icons: [config.app.iconUrl],
         };
 
-        const wConfig = defaultWagmiConfig({
-          chains,
+        // Create WagmiAdapter and AppKit
+        const wagmiAdapter = new WagmiAdapter({
+          networks: chains as any,
+          projectId,
+          ssr: true,
+        } as any);
+
+        // Initialize AppKit (creates modal and providers internally)
+        createAppKit({
+          adapters: [wagmiAdapter as any],
+          networks: chains as any,
           projectId,
           metadata,
-        });
+          features: { analytics: true },
+        } as any);
 
-        setWagmiConfig(wConfig);
-
-        // Create Web3Modal only once with correct project ID
-        if (!web3ModalInitialized) {
-          createWeb3Modal({
-            wagmiConfig: wConfig,
-            projectId,
-          });
-          web3ModalInitialized = true;
-        }
+        setWagmiConfig(wagmiAdapter.wagmiConfig);
 
         setLoading(false);
       })

@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Input, Button, useToasts, Loading, Tabs } from '@geist-ui/core';
 
+// Geist UI components have complex props; cast to `any` to avoid
+// excessive type incompatibilities in this admin page.
+const AnyButton: any = Button as any;
+const AnyInput: any = Input as any;
+
 interface ConfigItem {
   key: string;
   value: string;
@@ -88,7 +93,7 @@ export default function ConfigPage() {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">App Configuration</h1>
-          <Button onClick={fetchConfig}>🔄 Refresh</Button>
+          <AnyButton onClick={fetchConfig}>🔄 Refresh</AnyButton>
         </div>
 
         <Tabs initialValue="walletconnect">
@@ -121,10 +126,10 @@ export default function ConfigPage() {
                             {config.description}
                           </p>
                         )}
-                        <Input
+                        <AnyInput
                           width="100%"
                           value={config.value}
-                          onChange={(e) => {
+                          onChange={(e: any) => {
                             const newConfigs = [...configs];
                             const index = newConfigs.findIndex(
                               (c) => c.key === config.key,
@@ -136,13 +141,13 @@ export default function ConfigPage() {
                           placeholder={`Enter ${config.key}`}
                         />
                       </div>
-                      <Button
+                      <AnyButton
                         loading={saving === config.key}
                         onClick={() => handleUpdate(config.key, config.value)}
                         disabled={saving !== null}
                       >
                         💾 Save
-                      </Button>
+                      </AnyButton>
                     </div>
                   </div>
                 ))}
